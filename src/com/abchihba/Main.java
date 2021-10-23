@@ -5,33 +5,39 @@ import lib.render.Texture;
 import org.lwjgl.glfw.GLFW;
 
 import java.awt.*;
-import java.util.ArrayList;
 
 public class Main extends Window {
     private final Texture background = Texture.load("background.jpg");
-    private final double thickness = 5;
-    private double circleRadius = 150;
-    private double mouseX = 0;
-    private double mouseY = 0;
-    private double centerX = width / 2.;
-    private double centerY = height / 2.;
+    private final Ball mouseBall;
+    private final Environment environment;
 
     public Main() {
         super(800, 600, "Абчихба", true, "Arial", 40);
         setIcon("icon.jpg");
+        mouseBall = new Ball(0, 0, 150, Color.GREEN);
+        environment = new Environment(0.25, 600, 1000); // g > 0, т.к. ось Y направлена вниз
     }
 
     @Override
     protected void onCursorMoved(double x, double y) {
         super.onCursorMoved(x, y);
-        mouseX = x;
-        mouseY = y;
+        mouseBall.x = x;
+        mouseBall.y = y;
+    }
+
+    @Override
+    protected void onMouseButton(int button, int action, int mods) {
+        super.onMouseButton(button, action, mods);
+
+        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && action != GLFW.GLFW_RELEASE) {
+            environment.addBall(new Ball(mouseBall));
+        }
     }
 
     @Override
     protected void onScroll(double dx, double dy) {
         super.onScroll(dx, dy);
-        circleRadius = Math.max(circleRadius + 10 *(int) dy, 1);;
+        mouseBall.increaseRadius(10 * dy);
     }
 
     @Override
@@ -40,11 +46,11 @@ public class Main extends Window {
 
         switch (key) {
             case GLFW.GLFW_KEY_UP: {
-                circleRadius = circleRadius + 10;
+                mouseBall.increaseRadius(10);
                 break;
             }
             case GLFW.GLFW_KEY_DOWN: {
-                this.circleRadius = Math.max(circleRadius - 10, 1);
+                mouseBall.increaseRadius(-10);
                 break;
             }
         }
@@ -53,26 +59,31 @@ public class Main extends Window {
     @Override
     protected void onFrame(double elapsed) {
         canvas.drawTexture(background, 0, 0, width, height);
-        drawCenterCircle();
-        drawMouseCircle();
+        environment.move(elapsed);
+        drawEnvironmentBalls();
+        drawMouseBall();
     }
 
-    private void drawCenterCircle() {
-        canvas.drawCircle(Color.BLACK.getRGB(), centerX, centerY, circleRadius, thickness);
-    }
-
-    private void drawMouseCircle() {
-        int color = Color.GREEN.getRGB();
-
-        double d = Math.sqrt(Math.pow(mouseX-centerX, 2) + Math.pow(mouseY-centerY, 2));
-
-        // Добавил thickness  - 1, что бы учитывалась граница (так выглядит красивее ^_^)
-        // Случай, когда одна окружность вснутри другой можно не рассматривать, т.к. их радиусы равны
-        if (d < 2*circleRadius + thickness  - 1) {
-            color = Color.RED.getRGB();
+    private void drawEnvironmentBalls() {
+        for (Ball ball: environment.getBalls()) {
+            drawBall(ball);
         }
+    }
 
-        canvas.drawCircle(color, mouseX, mouseY, circleRadius, thickness);
+    private void drawMouseBall() {
+        mouseBall.color = Color.GREEN;
+        for (Ball ball: environment.getBalls()) {
+            if (mouseBall.intersect(ball)) {
+                mouseBall.color = Color.RED;
+                break;
+            }
+        }
+        drawBall(mouseBall);
+    }
+
+    private void drawBall(Ball ball) {
+        double thickness = 5;
+        canvas.drawCircle(ball.color.getRGB(), ball.x, ball.y, ball.radius, thickness);
     }
 
     public static void main(String[] args) {
