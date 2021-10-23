@@ -9,49 +9,42 @@ import java.util.ArrayList;
 
 public class Main extends Window {
     private final Texture background = Texture.load("background.jpg");
-    private int pointsCount;
-    private ArrayList<Vector> pointsPositions;
+    private final double thickness = 5;
+    private double circleRadius = 150;
+    private double mouseX = 0;
+    private double mouseY = 0;
+    private double centerX = width / 2.;
+    private double centerY = height / 2.;
 
-    public Main(int pointsCount) {
+    public Main() {
         super(800, 600, "Абчихба", true, "Arial", 40);
         setIcon("icon.jpg");
-
-        this.pointsCount = pointsCount;
-        createPointsPositions();
     }
 
-    private void createPointsPositions() {
-        this.pointsPositions = new ArrayList<Vector>();
-        double angle = 2*Math.PI / this.pointsCount;
-        for (int i = 0; i < this.pointsCount; i++) {
-            Vector vector = new Vector(200, 0);
-            vector.rotate(angle * i);
-            this.pointsPositions.add(vector);
-        }
+    @Override
+    protected void onCursorMoved(double x, double y) {
+        super.onCursorMoved(x, y);
+        mouseX = x;
+        mouseY = y;
     }
 
     @Override
     protected void onScroll(double dx, double dy) {
         super.onScroll(dx, dy);
-        this.pointsCount = Math.max(pointsCount + (int) dy, 3);
-        createPointsPositions();
+        circleRadius = Math.max(circleRadius + 10 *(int) dy, 1);;
     }
 
     @Override
     protected void onKeyButton(int key, int scancode, int action, int mods) {
         super.onKeyButton(key, scancode, action, mods);
-        if(action == GLFW.GLFW_RELEASE)
-            return;
 
         switch (key) {
             case GLFW.GLFW_KEY_UP: {
-                this.pointsCount = pointsCount + 1;
-                createPointsPositions();
+                circleRadius = circleRadius + 10;
                 break;
             }
             case GLFW.GLFW_KEY_DOWN: {
-                this.pointsCount = Math.max(pointsCount - 1, 3);
-                createPointsPositions();
+                this.circleRadius = Math.max(circleRadius - 10, 1);
                 break;
             }
         }
@@ -60,32 +53,29 @@ public class Main extends Window {
     @Override
     protected void onFrame(double elapsed) {
         canvas.drawTexture(background, 0, 0, width, height);
-        drawPolygon();
+        drawCenterCircle();
+        drawMouseCircle();
     }
 
-    private Vector getPoint(int i) {
-        return pointsPositions.get(i % pointsPositions.size());
+    private void drawCenterCircle() {
+        canvas.drawCircle(Color.BLACK.getRGB(), centerX, centerY, circleRadius, thickness);
     }
 
-    private void drawPolygon() {
-        double centerX = width / 2.;
-        double centerY = height / 2.;
+    private void drawMouseCircle() {
+        int color = Color.GREEN.getRGB();
 
-        for(int side = 0; side < pointsPositions.size(); side++) {
-            Vector start = getPoint(side);;
-            Vector end = getPoint(side+1);
-            canvas.drawLine(
-                    Color.BLACK.getRGB(),
-                    start.x + centerX,
-                    start.y + centerY,
-                    end.x+centerX,
-                    end.y+centerY,
-                    5
-            );
+        double d = Math.sqrt(Math.pow(mouseX-centerX, 2) + Math.pow(mouseY-centerY, 2));
+
+        // Добавил thickness  - 1, что бы учитывалась граница (так выглядит красивее ^_^)
+        // Случай, когда одна окружность вснутри другой можно не рассматривать, т.к. их радиусы равны
+        if (d < 2*circleRadius + thickness  - 1) {
+            color = Color.RED.getRGB();
         }
+
+        canvas.drawCircle(color, mouseX, mouseY, circleRadius, thickness);
     }
 
     public static void main(String[] args) {
-        new Main(6).show();
+        new Main().show();
     }
 }
